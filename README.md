@@ -4,6 +4,10 @@
 
 Clang based build system, for C/C++ projects, that you can leverage using TypeScript and Deno.
 
+- Parallel compilation;
+- Object files caching;
+- Nice console output;
+
 ### Usage
 
 ```typescript
@@ -41,7 +45,7 @@ if (Deno.args.includes('--release')) {
     target.debug = false;
     target.oLevel = 3;
 } else {
-    target.debug = false;
+    target.debug = true;
 }
 
 const res = await target.make({ output: true, threads: 16 });
