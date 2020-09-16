@@ -1,3 +1,5 @@
+![](Preview.gif)
+
 ### What is it?
 
 Clang based build system, for C/C++ projects, that you can leverage using TypeScript and Deno.
