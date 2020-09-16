@@ -1,6 +1,6 @@
 ### What is it?
 
-Clang based build system that you can leverage using TypeScript and Deno.
+Clang based build system, for C/C++ projects, that you can leverage using TypeScript and Deno.
 
 ### Usage
 
