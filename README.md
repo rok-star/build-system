@@ -52,7 +52,7 @@ const res = await target.make({ output: true, threads: 16 });
 
 if (res.type === 'complete')
     if (Deno.args.includes('--run'))
-        await Deno.run({ cmd: [ target.output ], stderr: 'piped', stdout: 'piped' }).status();
+        await Deno.run({ cmd: [ target.output ] }).status();
 ```
 
 ```shell

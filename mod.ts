@@ -657,7 +657,6 @@ export class Unit implements IOptions {
                     arguments: ['-c', ...(this.arguments ?? [])],
                     includeSearch: this.includeSearch,
                     librarySearch: this.librarySearch,
-                    libraries: this.libraries,
                     standard: this.standard,
                     objcARC: this.objcARC,
                     macros: this.macros,
