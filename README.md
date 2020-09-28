@@ -14,7 +14,7 @@ Clang based build system, for C/C++ projects, that you can leverage using TypeSc
 // make.ts
 
 import * as Path from 'https://deno.land/std/path/mod.ts';
-import { Target, tempPath } from 'path/to/BuildSystem.ts';
+import { Target, tempPath } from 'https://deno.land/x/buildsystem/mod.ts';
 
 const temp: string = Path.join(tempPath(), 'MyApp');
 const library: string = Path.resolve('path/to/library');
