@@ -549,6 +549,7 @@ export class Unit implements IOptions {
         const info: IUnitInfo = { deps: [], LOC: 0, eLOC: 0, size: 0, modified: inputStat.modified };
         const prev: IUnitInfo = { deps: [], LOC: 0, eLOC: 0, size: 0, modified: 0 };
         const lines: string[] = res1.stdout.trim()
+                                            .replaceAll('\\\r\n', '')
                                             .replaceAll('\\\n', '')
                                             .split(' ')
                                             .slice(2)
