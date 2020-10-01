@@ -923,9 +923,6 @@ export class Target {
             sources.push(p);
         }
 
-        if (options?.output === true)
-            console.log('COMPILATION\n');
-
         let __seq = 1;
 
         const tempDir: string = Path.join(Path.dirname(output), 'temp');
@@ -1036,13 +1033,13 @@ export class Target {
             return status;
         }
 
-        console.log('\nLINKAGE\n');
+        console.log('');
 
         const app = new App();
 
         const table = app.addTable();
 
-        const nameColumn = table.addColumn({ name: 'Name', width: 18 });
+        const nameColumn = table.addColumn({ name: 'File Name', width: 18 });
         const timeColumn = table.addColumn({ name: 'Time', align: Align.Right });
         const sizeColumn = table.addColumn({ name: 'Size', align: Align.Right });
 
