@@ -35,7 +35,7 @@ target.sources = [`${library}/path/to/file1.c`,
                 `${project}/Source/file2.c`,
                 `${project}/Source/main.c`];
 target.output = Path.join(temp, 'MyApp.out');
-target.includeSearch = [library];
+target.includePath = [library];
 target.frameworks = ['Cocoa', 'Metal', 'MetalKit', 'QuartzCore'];
 target.arguments = ['-Wall'];
 target.macros = ['__METAL__'];

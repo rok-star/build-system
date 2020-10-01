@@ -332,6 +332,9 @@ export class Table implements IAppComponent {
 export enum Standard {
     c89     = 'c89',
     c90     = 'c90',
+    c99     = 'c99',
+    c11     = 'c11',
+    c17     = 'c17',
     gnu89   = 'gnu89',
     gnu90   = 'gnu90',
     gnu99   = 'gnu99',
@@ -352,8 +355,8 @@ export enum Standard {
 }
 
 export interface IOptions {
-    includeSearch?: string[];
-    librarySearch?: string[];
+    includePath?: string[];
+    libraryPath?: string[];
     libraries?: string[];
     frameworks?: string[];
     standard?: Standard;
@@ -385,9 +388,9 @@ export async function clang(input: string[], output?: string, options?: IOptions
         cmd.push(`-O${options.oLevel.toString()}`);
     if (options?.sanitizer)
         cmd.push(`-fsanitize=address`);
-    for (const path of (options?.includeSearch ?? []))
+    for (const path of (options?.includePath ?? []))
         cmd.push(`-I${Path.normalize(path)}`);
-    for (const path of (options?.librarySearch ?? []))
+    for (const path of (options?.libraryPath ?? []))
         cmd.push(`-L${Path.normalize(path)}`);
     for (const library of (options?.libraries ?? []))
         cmd.push(`-l${library}`);
@@ -409,9 +412,9 @@ export async function clang(input: string[], output?: string, options?: IOptions
     }
 
     const proc = Deno.run({ cmd, stderr: 'piped', stdout: 'piped' });
-    const code = (await proc.status()).code;
-    const stdout = (await proc.output());
     const stderr = (await proc.stderrOutput());
+    const stdout = (await proc.output());
+    const code = (await proc.status()).code;
 
     return {
         cmd,
@@ -443,7 +446,7 @@ export interface IUnitStatus {
     stderr?: string;
 }
 
-export class Unit implements IOptions {
+export class Unit {
     private _onError: ((status: IUnitStatus) => void)[] = [];
     private _onStatus: ((status: IUnitStatus) => void)[] = [];
     private _onComplete: ((status: IUnitStatus) => void)[] = [];
@@ -462,8 +465,8 @@ export class Unit implements IOptions {
     public input?: string;
     public output?: string;
     public clean?: boolean;
-    public includeSearch?: string[];
-    public librarySearch?: string[];
+    public includePath?: string[];
+    public libraryPath?: string[];
     public libraries?: string[];
     public frameworks?: string[];
     public standard?: Standard;
@@ -531,7 +534,7 @@ export class Unit implements IOptions {
             undefined,
             {
                 arguments: ['-MM', ...(this.arguments ?? [])],
-                includeSearch: this.includeSearch,
+                includePath: this.includePath,
                 macros: this.macros
             }
         );
@@ -628,7 +631,7 @@ export class Unit implements IOptions {
                 outPrepPath,
                 {
                     arguments: ['-E', ...(this.arguments ?? [])],
-                    includeSearch: this.includeSearch,
+                    includePath: this.includePath,
                     macros: this.macros
                 }
             );
@@ -656,8 +659,8 @@ export class Unit implements IOptions {
                 outObjPath,
                 {
                     arguments: ['-c', ...(this.arguments ?? [])],
-                    includeSearch: this.includeSearch,
-                    librarySearch: this.librarySearch,
+                    includePath: this.includePath,
+                    libraryPath: this.libraryPath,
                     standard: this.standard,
                     objcARC: this.objcARC,
                     macros: this.macros,
@@ -720,7 +723,7 @@ export interface ILinkStatus {
     stderr?: string;
 }
 
-export class Link implements IOptions {
+export class Link {
     private _onError: ((status: ILinkStatus) => void)[] = [];
     private _onComplete: ((status: ILinkStatus) => void)[] = [];
     private _triggerError(status: ILinkStatus): void {
@@ -733,8 +736,8 @@ export class Link implements IOptions {
     }
     public output?: string;
     public input: string[] = [];
-    public includeSearch?: string[];
-    public librarySearch?: string[];
+    public includePath?: string[];
+    public libraryPath?: string[];
     public libraries?: string[];
     public frameworks?: string[];
     public standard?: Standard;
@@ -786,8 +789,8 @@ export class Link implements IOptions {
             input,
             output,
             {
-                includeSearch: this.includeSearch,
-                librarySearch: this.librarySearch,
+                includePath: this.includePath,
+                libraryPath: this.libraryPath,
                 libraries: this.libraries,
                 frameworks: this.frameworks,
                 standard: this.standard,
@@ -835,7 +838,7 @@ export interface ITargetMakeOptions {
     threads?: number;
 }
 
-export class Target implements IOptions {
+export class Target {
     private _onError: ((status: ITargetStatus) => void)[] = [];
     private _onComplete: ((status: ITargetStatus) => void)[] = [];
     private _triggerError(status: ITargetStatus): void {
@@ -855,13 +858,20 @@ export class Target implements IOptions {
                             .replaceAll('warning:', yellow('warning:'));
         console.log((out.length > 0) ? `\n${out}\n` : '\n');
     }
+    private _getStandard(path: string): Standard | undefined {
+        const ext = Path.extname(path);
+        if (['.c'].includes(ext)) return this.cStandard;
+        else if (['.cc', '.cpp', '.cxx', '.c++'].includes(ext)) return this.cppStandard;
+        else return undefined;
+    }
     public sources: string[] = [];
     public output?: string;
-    public includeSearch?: string[];
-    public librarySearch?: string[];
+    public includePath?: string[];
+    public libraryPath?: string[];
     public libraries?: string[];
     public frameworks?: string[];
-    public standard?: Standard;
+    public cStandard?: Standard;
+    public cppStandard?: Standard;
     public objcARC?: boolean;
     public macros?: string[];
     public debug?: boolean;
@@ -978,11 +988,11 @@ export class Target implements IOptions {
                 unit.onStatus(updateRow);
                 unit.onComplete(updateRow);
                 unit.onError(updateRow);
-                unit.includeSearch = this.includeSearch;
-                unit.librarySearch = this.librarySearch;
+                unit.includePath = this.includePath;
+                unit.libraryPath = this.libraryPath;
                 unit.libraries = this.libraries;
                 unit.frameworks = this.frameworks;
-                unit.standard = this.standard;
+                unit.standard = this._getStandard(path);
                 unit.objcARC = this.objcARC;
                 unit.macros = this.macros;
                 unit.debug = this.debug;
@@ -1052,11 +1062,10 @@ export class Target implements IOptions {
             sizeCell.value = ((status.size ?? 0) / 1024 / 1024).toFixed(2) + ' MB';
             app.render();
         });
-        link.includeSearch = this.includeSearch;
-        link.librarySearch = this.librarySearch;
+        link.includePath = this.includePath;
+        link.libraryPath = this.libraryPath;
         link.libraries = this.libraries;
         link.frameworks = this.frameworks;
-        link.standard = this.standard;
         link.objcARC = this.objcARC;
         link.macros = this.macros;
         link.debug = this.debug;
