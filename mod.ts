@@ -86,17 +86,13 @@ export enum Align {
 export class Renderer {
     private _lines: number = 0;
     private _cursor: number = 0;
-    private _maxWidth: number = 130;
     public get cursor(): number {
         return this._cursor;
-    }
-    public get maxWidth(): number {
-        return this._maxWidth;
     }
     public write(text: string): void {
         if (text.includes('\n'))
             throw new Error('Renderer.write(): "\\n" is not allowed here, use Renderer.break() instead');
-        const rem = (this._maxWidth - this._cursor);
+        const rem = (Deno.consoleSize(Deno.stdout.rid).columns - this._cursor);
         const out = text.substr(0, rem);
         this._cursor += out.length;
         Deno.stdout.writeSync(new TextEncoder().encode(out));

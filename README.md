@@ -56,7 +56,7 @@ if (res.type === 'complete')
 ```
 
 ```shell
-deno run --allow-all ./make.ts --run
+deno run --allow-all --unstable ./make.ts --run
 ```
 
 ### Status
