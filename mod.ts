@@ -656,7 +656,6 @@ export class Unit {
                 {
                     arguments: ['-c', ...(this.arguments ?? [])],
                     includePath: this.includePath,
-                    libraryPath: this.libraryPath,
                     standard: this.standard,
                     objcARC: this.objcARC,
                     macros: this.macros,
