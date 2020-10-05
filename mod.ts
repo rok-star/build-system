@@ -853,12 +853,6 @@ export class Target {
                             .replaceAll('warning:', yellow('warning:'));
         console.log((out.length > 0) ? `\n${out}\n` : '\n');
     }
-    private _getStandard(path: string): Standard | undefined {
-        const ext = Path.extname(path);
-        if (['.c'].includes(ext)) return this.cStandard;
-        else if (['.cc', '.cpp', '.cxx', '.c++'].includes(ext)) return this.cppStandard;
-        else return undefined;
-    }
     public sources: string[] = [];
     public output?: string;
     public includePath?: string[];
@@ -984,7 +978,12 @@ export class Target {
                 unit.libraryPath = this.libraryPath;
                 unit.libraries = this.libraries;
                 unit.frameworks = this.frameworks;
-                unit.standard = this._getStandard(path);
+                unit.standard = (() => {
+                    const ext = Path.extname(path);
+                    if (['.c'].includes(ext)) return this.cStandard;
+                    else if (['.cc', '.cpp', '.cxx', '.c++'].includes(ext)) return this.cppStandard;
+                    else return undefined;
+                })();
                 unit.objcARC = this.objcARC;
                 unit.macros = this.macros;
                 unit.debug = this.debug;
