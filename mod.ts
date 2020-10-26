@@ -1,7 +1,5 @@
 import * as Path from 'https://deno.land/std/path/mod.ts';
 
-export const platform: ('windows' | 'darwin' | 'linux') = Deno.build.os;
-
 export const red = (a: string): string => `\x1b[31m${a}\x1b[0m`;
 export const green = (a: string): string => `\x1b[32m${a}\x1b[0m`;
 export const yellow = (a: string): string => `\x1b[33m${a}\x1b[0m`;
@@ -25,10 +23,10 @@ export const numberFormat = (a: number): string => {
 }
 
 export const tempPath = (): string => {
-    if (platform == "windows") return "C:\\Temp";
-    else if (platform == "darwin") return "/tmp";
-    else if (platform == "linux") return "/tmp";
-    else throw new Error(`Platform "${platform}" is not supported`);
+    if (Deno.build.os == "windows") return "C:\\Temp";
+    else if (Deno.build.os == "darwin") return "/tmp";
+    else if (Deno.build.os == "linux") return "/tmp";
+    else throw new Error(`Platform "${Deno.build.os}" is not supported`);
 }
 
 export const dirName = (): string => {
@@ -372,7 +370,7 @@ export interface IResult {
     stderr: string;
 }
 
-export async function clang(input: string[], output?: string, options?: IOptions): Promise<IResult> {
+export async function clang(input: string[], output?: string, options?: IOptions, log?: boolean): Promise<IResult> {
     const cmd: string[] = ['clang'];
     if (options?.standard)
         cmd.push(`-std=${options.standard}`);
@@ -405,6 +403,12 @@ export async function clang(input: string[], output?: string, options?: IOptions
     if (output) {
         cmd.push(`-o`);
         cmd.push(output);
+    }
+
+    if (log === true) {
+        const text: string = cmd.join(' ') + '\n';
+        const path: string = Path.join(Path.resolve(Deno.cwd()), 'clang.log');
+        Deno.writeFileSync(path, (new TextEncoder()).encode(text), { append: true });
     }
 
     const proc = Deno.run({ cmd, stderr: 'piped', stdout: 'piped' });
@@ -440,6 +444,10 @@ export interface IUnitStatus {
     size?: number;
     stdout?: string;
     stderr?: string;
+}
+
+export interface IUnitMakeOptions {
+    log?: boolean;
 }
 
 export class Unit {
@@ -483,7 +491,7 @@ export class Unit {
     public onComplete(fn: (state: IUnitStatus) => void): void {
         this._onComplete.push(fn);
     }
-    public async make(): Promise<IUnitStatus> {
+    public async make(options?: IUnitMakeOptions): Promise<IUnitStatus> {
         const status: IUnitStatus = { type: 'running', stdout: '', stderr: '' };
         if (this.input === undefined) {
             status.type = 'error';
@@ -532,7 +540,8 @@ export class Unit {
                 arguments: ['-MM', ...(this.arguments ?? [])],
                 includePath: this.includePath,
                 macros: this.macros
-            }
+            },
+            options?.log
         );
         status.stderr += res1.stderr;
 
@@ -629,7 +638,8 @@ export class Unit {
                     arguments: ['-E', ...(this.arguments ?? [])],
                     includePath: this.includePath,
                     macros: this.macros
-                }
+                },
+                options?.log
             );
             status.stdout += res2.stdout;
             status.stderr += res2.stderr;
@@ -663,7 +673,8 @@ export class Unit {
                     oLevel: this.oLevel,
                     sanitizer: this.sanitizer,
                     errorLimit: this.errorLimit
-                }
+                },
+                options?.log
             );
             status.stdout += res3.stdout;
             status.stderr += res3.stderr;
@@ -718,6 +729,10 @@ export interface ILinkStatus {
     stderr?: string;
 }
 
+export interface ILinkMakeOptions {
+    log?: boolean;
+}
+
 export class Link {
     private _onError: ((status: ILinkStatus) => void)[] = [];
     private _onComplete: ((status: ILinkStatus) => void)[] = [];
@@ -749,7 +764,7 @@ export class Link {
     public onComplete(fn: (state: ILinkStatus) => void): void {
         this._onComplete.push(fn);
     }
-    async make(): Promise<ILinkStatus> {
+    async make(options?: ILinkMakeOptions): Promise<ILinkStatus> {
         const status: ILinkStatus = { type: 'running', stdout: '', stderr: '' };
         const input: string[] = [];
         for (const path of this.input) {
@@ -796,7 +811,8 @@ export class Link {
                 sanitizer: this.sanitizer,
                 errorLimit: this.errorLimit,
                 arguments: this.arguments
-            }
+            },
+            options?.log
         );
         status.stdout += res.stdout;
         status.stderr += res.stderr;
@@ -831,6 +847,7 @@ export interface ITargetStatus {
 export interface ITargetMakeOptions {
     output?: boolean;
     threads?: number;
+    log?: boolean;
 }
 
 export class Target {
@@ -999,7 +1016,7 @@ export class Target {
                 promises.push((async () => {
                     objects.push({
                         path: <string>unit.output,
-                        status: await unit.make()
+                        status: await unit.make({ log: options?.log })
                     });
                 })());
             }
@@ -1067,7 +1084,7 @@ export class Target {
         link.input = objects.map(u => u.path);
         link.output = this.output;
 
-        const res = await link.make();
+        const res = await link.make({ log: options?.log });
 
         status.stderr += res.stderr ?? '';
         status.stdout += res.stdout ?? '';
