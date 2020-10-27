@@ -864,10 +864,10 @@ export class Target {
                             .map(a => a.trim())
                             .filter(a => a.length !== 0)
                             .join('\n')
-                            .replaceAll('error', red('error'))
                             .replaceAll('error:', red('error:'))
-                            .replaceAll('warning', yellow('warning'))
-                            .replaceAll('warning:', yellow('warning:'));
+                            .replaceAll('error', red('error'))
+                            .replaceAll('warning:', yellow('warning:'))
+                            .replaceAll('warning', yellow('warning'));
         console.log((out.length > 0) ? `\n${out}\n` : '\n');
     }
     public sources: string[] = [];
