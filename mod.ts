@@ -370,6 +370,24 @@ export interface IResult {
     stderr: string;
 }
 
+export async function run(cmd: string[], log?: boolean): Promise<IResult> {
+    if (log === true) {
+        const text: string = cmd.join(' ') + '\n';
+        const path: string = Path.join(Path.resolve(Deno.cwd()), 'clang.log');
+        Deno.writeFileSync(path, (new TextEncoder()).encode(text), { append: true });
+    }
+
+    const proc = Deno.run({ cmd, stderr: 'piped', stdout: 'piped' });
+    const [ stderr, stdout, status ] = await Promise.all([ proc.stderrOutput(), proc.output(), proc.status() ]);
+
+    return {
+        cmd: cmd,
+        code: status.code,
+        stdout: new TextDecoder().decode(stdout).trim(),
+        stderr: new TextDecoder().decode(stderr).trim()
+    };
+}
+
 export async function clang(input: string[], output?: string, options?: IOptions, log?: boolean): Promise<IResult> {
     const cmd: string[] = ['clang'];
     if (options?.standard)
@@ -405,21 +423,11 @@ export async function clang(input: string[], output?: string, options?: IOptions
         cmd.push(output);
     }
 
-    if (log === true) {
-        const text: string = cmd.join(' ') + '\n';
-        const path: string = Path.join(Path.resolve(Deno.cwd()), 'clang.log');
-        Deno.writeFileSync(path, (new TextEncoder()).encode(text), { append: true });
-    }
+    return run(cmd, log);
+}
 
-    const proc = Deno.run({ cmd, stderr: 'piped', stdout: 'piped' });
-    const [ stderr, stdout, status ] = await Promise.all([ proc.stderrOutput(), proc.output(), proc.status() ]);
-
-    return {
-        cmd: cmd,
-        code: status.code,
-        stdout: new TextDecoder().decode(stdout).trim(),
-        stderr: new TextDecoder().decode(stderr).trim()
-    };
+export async function llvmar(input: string[], output: string, log?: boolean): Promise<IResult> {
+    return run(['llvm-ar', 'rc', output, ...input], log);
 }
 
 export interface IUnitInfo {
@@ -829,6 +837,90 @@ export class Link {
     }
 }
 
+export interface IArchStatus {
+    type: ('running' | 'error' | 'complete');
+    time?: number;
+    size?: number;
+    stdout?: string;
+    stderr?: string;
+}
+
+export interface IArchMakeOptions {
+    log?: boolean;
+}
+
+export class Arch {
+    private _onError: ((status: IArchStatus) => void)[] = [];
+    private _onComplete: ((status: IArchStatus) => void)[] = [];
+    private _triggerError(status: IArchStatus): void {
+        for (const subscribtion of this._onError)
+            subscribtion.call(undefined, status);
+    }
+    private _triggerComplete(status: IArchStatus): void {
+        for (const subscribtion of this._onComplete)
+        subscribtion.call(undefined, status);
+    }
+    public output?: string;
+    public input: string[] = [];
+    public onError(fn: (state: IArchStatus) => void): void {
+        this._onError.push(fn);
+    }
+    public onComplete(fn: (state: IArchStatus) => void): void {
+        this._onComplete.push(fn);
+    }
+    async make(options?: IArchMakeOptions): Promise<IArchStatus> {
+        const status: IArchStatus = { type: 'running', stdout: '', stderr: '' };
+        const input: string[] = [];
+        for (const path of this.input) {
+            const p = Path.resolve(path);
+            if (!stat(p).isFile) {
+                status.type = 'error';
+                status.stderr += `build-system: error: File "${p}" not found\n`;
+                this._triggerError(status);
+                return status;
+            }
+            input.push(p);
+        }
+
+        if (input.length === 0) {
+            status.type = 'error';
+            status.stderr += 'build-system: error: At least one input is required (arch.input = [\'path/to/some/file\'])\n';
+            this._triggerError(status);
+            return status;
+        }
+
+        if (this.output === undefined) {
+            status.type = 'error';
+            status.stderr += 'build-system: error: Output destination not specified (arch.output = \'path/to/output/file\')\n';
+            this._triggerError(status);
+            return status;
+        }
+        const output = Path.resolve(this.output);
+
+        const __time = timeNow();
+
+        const res = await llvmar(
+            input,
+            output,
+            options?.log
+        );
+        status.stdout += res.stdout;
+        status.stderr += res.stderr;
+
+        if (res.code !== 0) {
+            status.type = 'error';
+            this._triggerError(status);
+            return status;
+        }
+
+        status.type = 'complete';
+        status.time = (timeNow() - __time);
+        status.size = stat(this.output).size;
+        this._triggerComplete(status);
+        return status;
+    }
+}
+
 export interface ITargetObject {
     path: string;
     status: IUnitStatus;
@@ -846,6 +938,11 @@ export interface ITargetMakeOptions {
     output?: boolean;
     threads?: number;
     log?: boolean;
+}
+
+export enum TargetType {
+    executable = 'executable',
+    library    = 'library'
 }
 
 export class Target {
@@ -868,6 +965,7 @@ export class Target {
                             .replaceAll('warning:', yellow('warning:'));
         console.log((out.length > 0) ? `\n${out}\n` : '\n');
     }
+    public type: TargetType = TargetType.executable;
     public sources: string[] = [];
     public output?: string;
     public includePath?: string[];
@@ -1061,31 +1159,58 @@ export class Target {
         const timeCell = row.addCell(timeColumn, '-');
         const sizeCell = row.addCell(sizeColumn, '-');
 
-        const link = new Link();
-        link.onError(status => {
-            nameCell.color = Color.Red;
-            app.render();
-        });
-        link.onComplete(status => {
-            timeCell.value = timeFormat(status.time ?? 0);
-            sizeCell.value = ((status.size ?? 0) / 1024 / 1024).toFixed(2) + ' MB';
-            app.render();
-        });
-        link.includePath = this.includePath;
-        link.libraryPath = this.libraryPath;
-        link.libraries = this.libraries;
-        link.frameworks = this.frameworks;
-        link.objcARC = this.objcARC;
-        link.macros = this.macros;
-        link.debug = this.debug;
-        link.oLevel = this.oLevel;
-        link.sanitizer = this.sanitizer;
-        link.errorLimit = this.errorLimit;
-        link.arguments = this.arguments;
-        link.input = objects.map(u => u.path);
-        link.output = this.output;
+        let res: ILinkStatus | IArchStatus | undefined;
 
-        const res = await link.make({ log: options?.log });
+        if (this.type === TargetType.executable) {
+            const link = new Link();
+            link.includePath = this.includePath;
+            link.libraryPath = this.libraryPath;
+            link.libraries = this.libraries;
+            link.frameworks = this.frameworks;
+            link.objcARC = this.objcARC;
+            link.macros = this.macros;
+            link.debug = this.debug;
+            link.oLevel = this.oLevel;
+            link.sanitizer = this.sanitizer;
+            link.errorLimit = this.errorLimit;
+            link.arguments = this.arguments;
+            link.input = objects.map(u => u.path);
+            link.output = this.output;
+            link.onError(status => {
+                nameCell.color = Color.Red;
+                app.render();
+            });
+            link.onComplete(status => {
+                timeCell.value = timeFormat(status.time ?? 0);
+                sizeCell.value = ((status.size ?? 0) / 1024 / 1024).toFixed(2) + ' MB';
+                app.render();
+            });
+
+            res = await link.make({ log: options?.log });
+
+        } else if (this.type === TargetType.library) {
+            const arch = new Arch();
+            arch.input = objects.map(u => u.path);
+            arch.output = this.output;
+            arch.onError(status => {
+                nameCell.color = Color.Red;
+                app.render();
+            });
+            arch.onComplete(status => {
+                timeCell.value = timeFormat(status.time ?? 0);
+                sizeCell.value = ((status.size ?? 0) / 1024 / 1024).toFixed(2) + ' MB';
+                app.render();
+            });
+
+            res = await arch.make({ log: options?.log });
+        } else {
+            status.type = 'error';
+            status.stderr += 'build-system: error: Target type not specified (target.type = TargetType.executable)\n';
+            this._triggerError(status);
+            if (options?.output === true)
+                this._outputStatus(status);
+            return status;
+        }
 
         status.stderr += res.stderr ?? '';
         status.stdout += res.stdout ?? '';
