@@ -883,6 +883,7 @@ export class Target {
     public sanitizer?: boolean;
     public errorLimit?: number;
     public arguments?: string[];
+    public temp?: string;
     public clean: boolean = false;
     public onError(fn: (state: IUnitStatus) => void): void {
         this._onError.push(fn);
@@ -929,7 +930,9 @@ export class Target {
 
         let __seq = 1;
 
-        const tempDir: string = Path.join(Path.dirname(output), 'temp');
+        const tempDir: string = (this.temp !== undefined)
+                                ? Path.resolve(this.temp)
+                                : Path.join(Path.dirname(output), 'temp');
         const batches: string[][] = ((): string[][] => {
             const ret: string[][] = [];
             const input: string[] = sources;
