@@ -472,21 +472,21 @@ export class Unit {
         for (const subscribtion of this._onComplete)
         subscribtion.call(undefined, status);
     }
-    public input?: string;
-    public output?: string;
-    public clean?: boolean;
-    public includePath?: string[];
-    public libraryPath?: string[];
-    public libraries?: string[];
-    public frameworks?: string[];
+    public includePath: string[] = [];
+    public libraryPath: string[] = [];
+    public libraries: string[] = [];
+    public frameworks: string[] = [];
+    public arguments: string[] = [];
+    public macros: string[]  = [];
     public standard?: Standard;
     public objcARC?: boolean;
-    public macros?: string[];
     public debug?: boolean;
     public oLevel?: number;
     public sanitizer?: boolean;
     public errorLimit?: number;
-    public arguments?: string[];
+    public input?: string;
+    public output?: string;
+    public clean?: boolean;
     public temp?: string;
     public onError(fn: (state: IUnitStatus) => void): void {
         this._onError.push(fn);
@@ -750,20 +750,20 @@ export class Link {
         for (const subscribtion of this._onComplete)
         subscribtion.call(undefined, status);
     }
-    public output?: string;
     public input: string[] = [];
-    public includePath?: string[];
-    public libraryPath?: string[];
-    public libraries?: string[];
-    public frameworks?: string[];
+    public includePath: string[] = [];
+    public libraryPath: string[] = [];
+    public libraries: string[] = [];
+    public frameworks: string[] = [];
+    public arguments: string[] = [];
+    public macros?: string[];
     public standard?: Standard;
     public objcARC?: boolean;
-    public macros?: string[];
     public debug?: boolean;
     public oLevel?: number;
     public sanitizer?: boolean;
     public errorLimit?: number;
-    public arguments?: string[];
+    public output?: string;
     public onError(fn: (state: ILinkStatus) => void): void {
         this._onError.push(fn);
     }
@@ -967,22 +967,22 @@ export class Target {
     }
     public type: TargetType = TargetType.executable;
     public sources: string[] = [];
-    public output?: string;
-    public includePath?: string[];
-    public libraryPath?: string[];
-    public libraries?: string[];
-    public frameworks?: string[];
+    public includePath: string[] = [];
+    public libraryPath: string[] = [];
+    public libraries: string[] = [];
+    public frameworks: string[] = [];
+    public arguments: string[] = [];
+    public macros: string[] = [];
     public cStandard?: Standard;
     public cppStandard?: Standard;
     public objcARC?: boolean;
-    public macros?: string[];
     public debug?: boolean;
     public oLevel?: number;
     public sanitizer?: boolean;
     public errorLimit?: number;
-    public arguments?: string[];
+    public output?: string;
+    public clean?: boolean;
     public temp?: string;
-    public clean: boolean = false;
     public onError(fn: (state: IUnitStatus) => void): void {
         this._onError.push(fn);
     }
