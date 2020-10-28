@@ -427,7 +427,7 @@ export async function clang(input: string[], output?: string, options?: IOptions
 }
 
 export async function llvmar(input: string[], output: string, log?: boolean): Promise<IResult> {
-    return run(['llvm-ar', 'rc', output, ...input], log);
+    return run([(Deno.build.os == 'windows' ? 'llvm-ar' : 'ar'), 'rc', output, ...input], log);
 }
 
 export interface IUnitInfo {
