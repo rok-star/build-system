@@ -58,7 +58,3 @@ if (res.type === 'complete')
 ```shell
 deno run --allow-all --unstable ./make.ts --run
 ```
-
-### Status
-
-Unstable alpha version.
