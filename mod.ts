@@ -22,6 +22,12 @@ export const numberFormat = (a: number): string => {
     return ret;
 }
 
+export const remove = (path: string): void => {
+    try {
+        Deno.removeSync(path, { recursive: true });
+    } catch (e) {}
+}
+
 export const tempPath = (): string => {
     if (Deno.build.os == "windows") return "C:\\Temp";
     else if (Deno.build.os == "darwin") return "/tmp";
