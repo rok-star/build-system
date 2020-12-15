@@ -385,13 +385,16 @@ export async function run(cmd: string[], log?: boolean): Promise<IResult> {
 
     const proc = Deno.run({ cmd, stderr: 'piped', stdout: 'piped' });
     const [ stderr, stdout, status ] = await Promise.all([ proc.stderrOutput(), proc.output(), proc.status() ]);
-
-    return {
+    const ret = {
         cmd: cmd,
         code: status.code,
         stdout: new TextDecoder().decode(stdout).trim(),
         stderr: new TextDecoder().decode(stderr).trim()
     };
+
+    proc.close();
+
+    return ret;
 }
 
 export async function clang(input: string[], output?: string, options?: IOptions, log?: boolean): Promise<IResult> {
