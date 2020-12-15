@@ -163,6 +163,11 @@ export class App {
         this._components.push(separator);
         return separator;
     }
+    public addProgress(options?: ProgressOptions): Progress {
+        const progress = new Progress(options);
+        this._components.push(progress);
+        return progress;
+    }
     public render(): void {
         if (this._needsLine) {
             console.log('');
@@ -188,6 +193,47 @@ export class Label implements IAppComponent {
     public render(renderer: Renderer): void {
         renderer.writeValue(this.value ?? '', this.width ?? 999, undefined, this.color);
         renderer.break();
+    }
+}
+
+export interface ProgressOptions {
+    value?: number;
+    label?: string;
+    item?: string;
+    width?: number;
+}
+
+export class Progress implements IAppComponent {
+    public value?: number;
+    public label?: string;
+    public item?: string;
+    public width?: number;
+    public render(renderer: Renderer): void {
+        const WIDTH = this.width ?? 50;
+        if (this.label !== undefined)
+            renderer.write(this.label + ' ');
+        renderer.write('[');
+        if (this.value !== undefined) {
+            for (let i = 0; i < WIDTH; i++) {
+                if (this.value >= (i / WIDTH)) {
+                    renderer.write('#');
+                } else {
+                    renderer.write(' ');
+                }
+            }
+        }
+        renderer.write(']');
+        if (this.item !== undefined)
+            renderer.write(' ' + this.item);
+        renderer.break();
+    }
+    public constructor(options?: ProgressOptions) {
+        if (options !== undefined) {
+            this.value = options.value;
+            this.label = options.label;
+            this.item = options.item;
+            this.width = options.width
+        }
     }
 }
 
