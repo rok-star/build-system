@@ -445,6 +445,8 @@ export async function run(cmd: string[], log?: boolean): Promise<IResult> {
 
 export async function clang(input: string[], output?: string, options?: IOptions, log?: boolean): Promise<IResult> {
     const cmd: string[] = ['clang'];
+    for (const path of input)
+        cmd.push(path);
     if (options?.standard)
         cmd.push(`-std=${options.standard}`);
     if (options?.objcARC)
@@ -471,8 +473,6 @@ export async function clang(input: string[], output?: string, options?: IOptions
         cmd.push(`-ferror-limit=${options.errorLimit.toString()}`);
     for (const arg of (options?.arguments ?? []))
         cmd.push(arg);
-    for (const path of input)
-        cmd.push(path);
     if (output) {
         cmd.push(`-o`);
         cmd.push(output);
