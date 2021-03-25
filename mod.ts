@@ -1,4 +1,5 @@
 import * as Path from 'https://deno.land/std/path/mod.ts';
+import * as FS from 'https://deno.land/std/fs/mod.ts';
 
 export const red = (a: string): string => `\x1b[31m${a}\x1b[0m`;
 export const green = (a: string): string => `\x1b[32m${a}\x1b[0m`;
@@ -1044,7 +1045,7 @@ export class Target {
     public onComplete(fn: (state: IUnitStatus) => void): void {
         this._onComplete.push(fn);
     }
-    async make(options?: ITargetMakeOptions): Promise<ITargetStatus> {
+    public async make(options?: ITargetMakeOptions): Promise<ITargetStatus> {
         const status: ITargetStatus = { type: 'running', stdout: '', stderr: '' };
         const sources: string[] = [];
 
@@ -1284,5 +1285,40 @@ export class Target {
         status.type = 'complete';
         this._triggerComplete(status);
         return status;
+    }
+}
+
+export class Project extends Target {
+    private _path: string;
+    private _name: string;
+    private _mode: string;
+    public get path(): string {
+        return this._path;
+    }
+    public get name(): string {
+        return this._name;
+    }
+    public get mode(): string {
+        return this._mode;
+    }
+    public constructor(options: { path: string; name?: string; mode?: ('release' | 'debug') }) {
+        super();
+        this._path = options.path;
+        this._name = options.name ?? (Path.basename(options.path));
+        this._mode = options.mode ?? 'debug';
+        this.output = Path.resolve(tempPath(), `${this._name}/${this._mode}/out.${Deno.build.os === 'windows' ? 'exe' : 'a'}`);
+        this.cStandard = Standard.c17;
+        this.cppStandard = Standard.cxx2a;
+        this.libraries.push('stdc++');
+    }
+    public addFile(path: string): void {
+        this.sources.push(Path.resolve(this._path, path));
+    }
+    public addFolder(path: string, options?: { exts?: string[], recursive?: boolean }): void {
+        for (const entry of FS.walkSync(Path.resolve(this._path, path), { maxDepth: (options?.recursive === true ? Infinity : 1), exts: options?.exts })) {
+            if (entry.isFile) {
+                this.sources.push(entry.path);
+            }
+        }
     }
 }
