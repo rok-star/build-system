@@ -747,6 +747,7 @@ export class Unit {
                 return status;
             }
 
+            info.size = stat(outObjPath).size;
             status.cTime = (timeNow() - __time_C);
             status.size = info.size;
             status.action = 'compiled';
