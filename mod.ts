@@ -496,7 +496,7 @@ export interface IUnitInfo {
 
 export interface IUnitStatus {
     type: ('running' | 'error' | 'complete');
-    action?: ('skip' | 'compile');
+    action?: ('skip' | 'compiling' | 'compiled');
     mmTime?: number;
     LOC?: number;
     eLOC?: number;
@@ -665,22 +665,22 @@ export class Unit {
                 for (let i = 0; i < info.deps.length; i++) {
                     if ((info.deps[i].path !== prev.deps[i].path)
                     || (info.deps[i].modified !== prev.deps[i].modified)) {
-                        status.action = 'compile';
+                        status.action = 'compiling';
                         break;
                     }
                 }
-            } else status.action = 'compile';
-        } else status.action = 'compile';
+            } else status.action = 'compiling';
+        } else status.action = 'compiling';
 
         const outPrepPathStat = stat(outPrepPath);
         const outObjPathStat = stat(outObjPath);
-        if (!outPrepPathStat.exists) status.action = 'compile';
-        if (!outObjPathStat.exists) status.action = 'compile';
-        if (this.clean === true) status.action = 'compile';
+        if (!outPrepPathStat.exists) status.action = 'compiling';
+        if (!outObjPathStat.exists) status.action = 'compiling';
+        if (this.clean === true) status.action = 'compiling';
 
         this._triggerStatus(status);
 
-        if (status.action === 'compile') {
+        if (status.action === 'compiling') {
             if (outPrepPathStat.exists) await Deno.remove(outPrepPath);
             if (outObjPathStat.exists) await Deno.remove(outObjPath);
             if (!stat(outDir).exists) await Deno.mkdir(outDir, { recursive: true });
@@ -748,10 +748,8 @@ export class Unit {
             }
 
             status.cTime = (timeNow() - __time_C);
-            this._triggerStatus(status);
-
-            info.size = stat(outObjPath).size;
             status.size = info.size;
+            status.action = 'compiled';
             this._triggerStatus(status);
 
             await Deno.writeFile(outInfoPath, new TextEncoder().encode(JSON.stringify(info)));
@@ -1103,7 +1101,7 @@ export class Target {
             table.header = (batch === batches[0]);
             const fileNameColumn = table.addColumn({ name: 'File Name', width: 16 });
             const mmTimeColumn = table.addColumn({ name: '-MM Time', align: Align.Center });
-            const actionColumn = table.addColumn({ name: 'Action', width: 7 });
+            const actionColumn = table.addColumn({ name: 'Action', width: 10 });
             const locColumn = table.addColumn({ name: 'LOC', width: 6, align: Align.Right });
             const eTimeColumn = table.addColumn({ name: '-E Time', align: Align.Right });
             const locEColumn = table.addColumn({ name: 'LOC (-E)', align: Align.Right });
@@ -1137,6 +1135,9 @@ export class Target {
 
                     if (status.type === 'error')
                         nameCell.color = Color.Red;
+
+                    if (status.action === 'compiled')
+                        actionCell.color = Color.Green;
 
                     if (options?.output === true)
                         app.render();
