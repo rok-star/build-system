@@ -496,7 +496,7 @@ export interface IUnitInfo {
 
 export interface IUnitStatus {
     type: ('running' | 'error' | 'complete');
-    action?: ('skip' | 'compiling' | 'compiled');
+    action?: ('skip' | 'compiling' | 'compiled' | 'failure');
     mmTime?: number;
     LOC?: number;
     eLOC?: number;
@@ -708,6 +708,7 @@ export class Unit {
 
             if (res2.code !== 0) {
                 status.type = 'error';
+                status.action = 'failure';
                 this._triggerError(status);
                 return status;
             }
@@ -743,6 +744,7 @@ export class Unit {
 
             if (res3.code !== 0) {
                 status.type = 'error';
+                status.action = 'failure';
                 this._triggerError(status);
                 return status;
             }
@@ -1134,8 +1136,8 @@ export class Target {
                     timeCell.value = status.time ? timeFormat(status.time ?? 0) : '-';
                     sizeCell.value = status.size ? (status.size / 1024 / 1024).toFixed(2) + ' MB' : '-';
 
-                    if (status.type === 'error')
-                        nameCell.color = Color.Red;
+                    if (status.action === 'failure')
+                        actionCell.color = Color.Red;
 
                     if (status.action === 'compiled')
                         actionCell.color = Color.Green;
