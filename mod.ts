@@ -1307,13 +1307,18 @@ export class Project extends Target {
     }
     public constructor(options: { path: string; name?: string; mode?: ('release' | 'debug') }) {
         super();
-        this._path = options.path;
-        this._name = options.name ?? (Path.basename(options.path));
+        this._path = Path.resolve(options.path);
+        this._name = options.name ?? (Path.basename(this._path));
         this._mode = options.mode ?? 'debug';
         this.output = Path.resolve(tempPath(), `${this._name}/${this._mode}/out.${Deno.build.os === 'windows' ? 'exe' : 'a'}`);
         this.cStandard = Standard.c17;
         this.cppStandard = Standard.cxx2a;
         this.libraries.push('stdc++');
+
+        const src = Path.resolve(this._path, 'src');
+        if (stat(src).exists) {
+            this.includePath.push(src);
+        }
     }
     public addFile(path: string): void {
         this.sources.push(Path.resolve(this._path, path));
